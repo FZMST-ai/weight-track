@@ -1,0 +1,402 @@
+<title>Weight Log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column — scale readout, log form, trend chart, history. */
+:root {
+  --bg: #eef2f1;
+  --surface: #ffffff;
+  --ink: #15292b;
+  --muted: #5d7275;
+  --line: #d3dedc;
+  --accent: #0d7a73;
+  --accent-soft: #d5ece9;
+  --good: #2f7d32;
+  --warn: #b5541c;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1819; --surface: #172325; --ink: #e3eeec; --muted: #8fa5a6; --line: #2a3a3c;
+    --accent: #4cc2b6; --accent-soft: #1d3a39; --good: #79c47d; --warn: #f0995f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1819; --surface: #172325; --ink: #e3eeec; --muted: #8fa5a6; --line: #2a3a3c;
+  --accent: #4cc2b6; --accent-soft: #1d3a39; --good: #79c47d; --warn: #f0995f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+main { max-width: 640px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; margin: 0; letter-spacing: -0.01em; }
+h2 { font-family: var(--font-display); font-weight: 500; font-size: 1.05rem; margin: 0; }
+.sync { font-size: 0.78rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.sync[data-state="live"] .dot { background: var(--good); }
+.sync[data-state="saving"] .dot { background: var(--accent); }
+.sync[data-state="off"] .dot { background: var(--warn); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+
+/* Scale readout */
+.readout { display: grid; gap: 4px; }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.big { font-family: var(--font-mono); font-size: clamp(2.6rem, 11vw, 3.6rem); font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+.big small { font-size: 0.4em; color: var(--muted); margin-left: 6px; }
+.sub { color: var(--muted); font-size: 0.86rem; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.stat { display: grid; gap: 2px; min-width: 0; }
+.stat .v { font-family: var(--font-mono); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.down { color: var(--good); }
+.up { color: var(--warn); }
+
+/* Form */
+form { display: grid; grid-template-columns: 1.1fr 1fr; gap: 10px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+input, select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; width: 100%; min-width: 0; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#weight { font-family: var(--font-mono); font-size: 1.2rem; }
+button { font: inherit; font-weight: 600; cursor: pointer; border-radius: 9px; border: 1px solid transparent; padding: 10px 16px; }
+.primary { background: var(--accent); color: var(--surface); grid-column: 1 / -1; }
+.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.ghost { background: transparent; color: var(--muted); border-color: var(--line); padding: 6px 10px; font-size: 0.8rem; font-weight: 500; }
+.ghost:hover { color: var(--ink); }
+
+/* Chart */
+.chart-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ranges { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.ranges button { border-radius: 0; padding: 5px 10px; font-size: 0.78rem; font-weight: 500; background: transparent; color: var(--muted); }
+.ranges button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
+svg { display: block; width: 100%; height: auto; }
+svg text { fill: var(--muted); font-family: var(--font-mono); font-size: 10px; }
+.legend { display: flex; gap: 14px; font-size: 0.76rem; color: var(--muted); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+
+/* History */
+ul { list-style: none; margin: 0; padding: 0; }
+li { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+li:first-child { border-top: 0; }
+.date { font-size: 0.88rem; }
+.note { color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+.w { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.w .d { display: block; font-size: 0.72rem; }
+.del { background: none; border: 0; color: var(--muted); padding: 4px 6px; font-size: 1rem; }
+.del:hover { color: var(--warn); }
+.confirm { display: inline-flex; gap: 6px; }
+.confirm button { padding: 4px 8px; font-size: 0.75rem; }
+.confirm .yes { background: var(--warn); color: var(--surface); }
+.empty { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 18px 8px; }
+.settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.notice { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-size: 0.85rem; }
+@media (max-width: 420px) {
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat .v { font-size: 0.95rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<main>
+  <header>
+    <h1>Weight Log</h1>
+    <span class="sync" id="sync" data-state="connecting"><span class="dot"></span><span id="syncText">Connecting…</span></span>
+  </header>
+
+  <div class="notice" id="offline" hidden>Sync isn't available in this view. Open this page while signed in to Claude to save entries and see them on your other devices.</div>
+
+  <section class="panel readout" aria-label="Current weight">
+    <span class="label">Latest weigh-in</span>
+    <div class="big" id="current">—<small id="unitBig">kg</small></div>
+    <div class="sub" id="currentSub">Log your first weight below. It syncs to every device you open this page on.</div>
+    <div class="stats">
+      <div class="stat"><span class="label">7-day avg</span><span class="v" id="avg7">—</span></div>
+      <div class="stat"><span class="label">30-day change</span><span class="v" id="chg30">—</span></div>
+      <div class="stat"><span class="label">To goal</span><span class="v" id="toGoal">—</span></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Log a weigh-in">
+    <h2>Log a weigh-in</h2>
+    <form id="form" autocomplete="off">
+      <div class="field">
+        <label class="label" for="weight">Weight (<span id="unitLabel">kg</span>)</label>
+        <input id="weight" type="number" inputmode="decimal" step="0.1" min="20" max="700" required placeholder="72.4">
+      </div>
+      <div class="field">
+        <label class="label" for="date">Date</label>
+        <input id="date" type="date" required>
+      </div>
+      <div class="field full">
+        <label class="label" for="note">Note (optional)</label>
+        <input id="note" type="text" maxlength="120" placeholder="After run, before breakfast">
+      </div>
+      <button class="primary" id="save" type="submit">Save</button>
+    </form>
+  </section>
+
+  <section class="panel" aria-label="Trend">
+    <div class="chart-head">
+      <h2>Trend</h2>
+      <div class="ranges" role="group" aria-label="Range">
+        <button type="button" data-days="30" aria-pressed="false">30d</button>
+        <button type="button" data-days="90" aria-pressed="true">90d</button>
+        <button type="button" data-days="365" aria-pressed="false">1y</button>
+        <button type="button" data-days="0" aria-pressed="false">All</button>
+      </div>
+    </div>
+    <div id="chart"><div class="empty">Your trend line appears after two weigh-ins.</div></div>
+    <div class="legend">
+      <span><i style="background: var(--accent)"></i>7-day average</span>
+      <span><i style="background: var(--muted); height: 6px; width: 6px; border-radius: 50%"></i>Daily weigh-in</span>
+      <span><i style="background: var(--good)"></i>Goal</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Settings">
+    <h2>Settings</h2>
+    <div class="settings">
+      <div class="field">
+        <label class="label" for="unit">Units</label>
+        <select id="unit"><option value="kg">Kilograms (kg)</option><option value="lb">Pounds (lb)</option></select>
+      </div>
+      <div class="field">
+        <label class="label" for="goal">Goal weight</label>
+        <input id="goal" type="number" inputmode="decimal" step="0.1" min="20" max="700" placeholder="None">
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="History">
+    <h2>History</h2>
+    <ul id="list"><li class="empty">No weigh-ins yet.</li></ul>
+  </section>
+</main>
+
+<script>
+(() => {
+  const KG_PER_LB = 0.45359237;
+  const $ = (id) => document.getElementById(id);
+  const state = { entries: [], unit: "kg", goalKg: null, range: 90, db: null, uid: null, confirming: null };
+
+  const today = () => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  };
+  $("date").value = today();
+
+  const toUnit = (kg) => state.unit === "kg" ? kg : kg / KG_PER_LB;
+  const toKg = (v) => state.unit === "kg" ? v : v * KG_PER_LB;
+  const fmt = (kg) => toUnit(kg).toFixed(1);
+  const fmtDelta = (kg) => {
+    const v = toUnit(kg);
+    const s = (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(1);
+    return `<span class="${v < 0 ? "down" : v > 0 ? "up" : ""}">${s}</span>`;
+  };
+  const fmtDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const dayNum = (iso) => Math.round(new Date(iso + "T12:00:00").getTime() / 86400000);
+
+  function setSync(s, text) { $("sync").dataset.state = s; $("syncText").textContent = text; }
+
+  // 7-day trailing average for each entry (entries sorted ascending).
+  function movingAvg(entries) {
+    return entries.map((e, i) => {
+      const end = dayNum(e.date);
+      let sum = 0, n = 0;
+      for (let j = i; j >= 0 && end - dayNum(entries[j].date) < 7; j--) { sum += entries[j].kg; n++; }
+      return sum / n;
+    });
+  }
+
+  function render() {
+    const es = state.entries;
+    const u = state.unit;
+    $("unitBig").textContent = u; $("unitLabel").textContent = u;
+    $("unit").value = u;
+    if (document.activeElement !== $("goal")) $("goal").value = state.goalKg ? fmt(state.goalKg) : "";
+
+    if (!es.length) {
+      $("current").firstChild.nodeValue = "—";
+      ["avg7", "chg30", "toGoal"].forEach((id) => $(id).textContent = "—");
+    } else {
+      const last = es[es.length - 1];
+      const avgs = movingAvg(es);
+      $("current").firstChild.nodeValue = fmt(last.kg);
+      const prev = es[es.length - 2];
+      $("currentSub").innerHTML = fmtDate(last.date) + (prev ? ` · ${fmtDelta(last.kg - prev.kg)} ${u} since ${fmtDate(prev.date)}` : "");
+      $("avg7").textContent = fmt(avgs[avgs.length - 1]);
+      const cutoff = dayNum(last.date) - 30;
+      const base = es.find((e) => dayNum(e.date) >= cutoff);
+      $("chg30").innerHTML = base && base !== last ? fmtDelta(last.kg - base.kg) : "—";
+      $("toGoal").innerHTML = state.goalKg ? (Math.abs(last.kg - state.goalKg) < 0.05 ? "Reached" : fmt(Math.abs(last.kg - state.goalKg))) : "—";
+    }
+    renderChart();
+    renderList();
+  }
+
+  function renderChart() {
+    const all = state.entries;
+    const box = $("chart");
+    let es = all;
+    if (state.range && all.length) {
+      const cut = dayNum(all[all.length - 1].date) - state.range;
+      es = all.filter((e) => dayNum(e.date) >= cut);
+    }
+    if (es.length < 2) { box.innerHTML = `<div class="empty">Your trend line appears after two weigh-ins${state.range && all.length >= 2 ? " in this range" : ""}.</div>`; return; }
+    const avgsAll = movingAvg(all);
+    const avgs = avgsAll.slice(all.length - es.length);
+    const W = 600, H = 220, L = 40, R = 12, T = 12, B = 26;
+    const xs = es.map((e) => dayNum(e.date));
+    const x0 = xs[0], x1 = xs[xs.length - 1] === x0 ? x0 + 1 : xs[xs.length - 1];
+    let vals = es.map((e) => toUnit(e.kg));
+    if (state.goalKg) vals.push(toUnit(state.goalKg));
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = Math.max((hi - lo) * 0.12, 0.5); lo -= pad; hi += pad;
+    const step = niceStep((hi - lo) / 4);
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    const X = (d) => L + (d - x0) / (x1 - x0) * (W - L - R);
+    const Y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
+    let g = "";
+    for (let v = lo; v <= hi + 1e-9; v += step) {
+      g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+      g += `<text x="${L - 6}" y="${Y(v) + 3}" text-anchor="end">${+v.toFixed(1)}</text>`;
+    }
+    const fmtShort = (d) => new Date(d * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    g += `<text x="${L}" y="${H - 8}" text-anchor="start">${fmtShort(x0)}</text>`;
+    g += `<text x="${W - R}" y="${H - 8}" text-anchor="end">${fmtShort(xs[xs.length - 1])}</text>`;
+    if (state.goalKg) {
+      const gy = Y(toUnit(state.goalKg));
+      g += `<line x1="${L}" x2="${W - R}" y1="${gy}" y2="${gy}" stroke="var(--good)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+    }
+    const line = avgs.map((a, i) => `${i ? "L" : "M"}${X(xs[i]).toFixed(1)},${Y(toUnit(a)).toFixed(1)}`).join("");
+    const area = `${line}L${X(xs[xs.length - 1]).toFixed(1)},${H - B}L${X(xs[0]).toFixed(1)},${H - B}Z`;
+    g += `<path d="${area}" fill="var(--accent-soft)" opacity="0.7"/>`;
+    g += es.map((e, i) => `<circle cx="${X(xs[i]).toFixed(1)}" cy="${Y(toUnit(e.kg)).toFixed(1)}" r="2.6" fill="var(--muted)" opacity="0.65"><title>${fmtDate(e.date)}: ${fmt(e.kg)} ${state.unit}</title></circle>`).join("");
+    g += `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lx = X(xs[xs.length - 1]), ly = Y(toUnit(avgs[avgs.length - 1]));
+    g += `<circle cx="${lx}" cy="${ly}" r="4.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight trend chart">${g}</svg>`;
+  }
+  function niceStep(raw) {
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = raw / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+  }
+
+  function renderList() {
+    const es = state.entries;
+    const list = $("list");
+    if (!es.length) { list.innerHTML = `<li class="empty">No weigh-ins yet.</li>`; return; }
+    list.innerHTML = "";
+    for (let i = es.length - 1; i >= 0; i--) {
+      const e = es[i], prev = es[i - 1];
+      const li = document.createElement("li");
+      const left = document.createElement("div");
+      left.innerHTML = `<div class="date">${fmtDate(e.date)}</div>`;
+      if (e.note) { const n = document.createElement("div"); n.className = "note"; n.textContent = e.note; left.appendChild(n); }
+      const w = document.createElement("div");
+      w.className = "w";
+      w.innerHTML = `${fmt(e.kg)} ${state.unit}<span class="d">${prev ? fmtDelta(e.kg - prev.kg) : "&nbsp;"}</span>`;
+      const act = document.createElement("div");
+      if (state.confirming === e.date) {
+        act.className = "confirm";
+        act.innerHTML = `<button class="ghost no" type="button">Keep</button><button class="yes" type="button">Delete</button>`;
+        act.querySelector(".no").onclick = () => { state.confirming = null; renderList(); };
+        act.querySelector(".yes").onclick = () => remove(e.date);
+      } else {
+        act.innerHTML = `<button class="del" type="button" aria-label="Delete entry for ${fmtDate(e.date)}">×</button>`;
+        act.querySelector("button").onclick = () => { state.confirming = e.date; renderList(); };
+      }
+      li.append(left, w, act);
+      list.appendChild(li);
+    }
+  }
+
+  // ---- Sync via the artifact's private per-user store ----
+  const profileRef = () => state.db.doc(`data/users/${state.uid}/profile`);
+  const entriesCol = () => profileRef().collection("entries");
+
+  async function saving(fn, okText) {
+    if (!state.db) return;
+    setSync("saving", "Saving…");
+    try { await fn(); setSync("live", okText || "Synced"); }
+    catch (err) {
+      setSync("off", err && err.code === "quota_exceeded" ? "Storage full: delete old entries" : "Couldn't save. Try again.");
+    }
+  }
+
+  async function saveProfile() {
+    await saving(() => profileRef().set({ unit: state.unit, goalKg: state.goalKg }));
+  }
+
+  $("form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const v = parseFloat($("weight").value);
+    const date = $("date").value;
+    if (!isFinite(v) || !date) return;
+    const kg = Math.round(toKg(v) * 1000) / 1000;
+    const note = $("note").value.trim();
+    $("save").disabled = true;
+    await saving(() => entriesCol().doc(date).set({ date, kg, note, updatedAt: Date.now() }), "Saved and synced");
+    $("save").disabled = !state.db;
+    $("weight").value = ""; $("note").value = ""; $("date").value = today();
+  });
+
+  async function remove(date) {
+    state.confirming = null;
+    await saving(() => entriesCol().doc(date).delete(), "Deleted");
+  }
+
+  $("unit").addEventListener("change", () => { state.unit = $("unit").value; render(); saveProfile(); });
+  $("goal").addEventListener("change", () => {
+    const v = parseFloat($("goal").value);
+    state.goalKg = isFinite(v) && v > 0 ? Math.round(toKg(v) * 1000) / 1000 : null;
+    render(); saveProfile();
+  });
+  document.querySelectorAll(".ranges button").forEach((b) => b.addEventListener("click", () => {
+    state.range = +b.dataset.days;
+    document.querySelectorAll(".ranges button").forEach((o) => o.setAttribute("aria-pressed", String(o === b)));
+    try { localStorage.setItem("wl-range", b.dataset.days); } catch {}
+    renderChart();
+  }));
+  try {
+    const r = localStorage.getItem("wl-range");
+    if (r !== null) document.querySelector(`.ranges button[data-days="${r}"]`)?.click();
+  } catch {}
+
+  function offline() {
+    setSync("off", "Not syncing");
+    $("offline").hidden = false;
+    $("save").disabled = true;
+  }
+
+  async function connect() {
+    if (!window.claude?.use) { offline(); return; }
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    const uid = user ? await user.id() : null;
+    if (!db || !uid) { offline(); return; }
+    state.db = db; state.uid = uid;
+    profileRef().onSnapshot((snap) => {
+      if (!snap.exists) return;
+      const d = snap.data();
+      if (d.unit === "kg" || d.unit === "lb") state.unit = d.unit;
+      state.goalKg = typeof d.goalKg === "number" ? d.goalKg : null;
+      render();
+    }, () => offline());
+    entriesCol().orderBy("date").limit(1000).onSnapshot((snap) => {
+      state.entries = snap.docs.map((d) => d.data()).filter((d) => typeof d.kg === "number" && d.date);
+      if (!snap.metadata.hasPendingWrites) setSync("live", snap.metadata.fromCache ? "Syncing…" : "Synced");
+      render();
+    }, () => offline());
+  }
+  render();
+  connect();
+})();
+</script>
