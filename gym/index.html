@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Five-day gym workout tracker with machine and free-weight options, personal records and calorie estimates. Data stays in your browser.">
+<title>Gym Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23c6f135'/%3E%3Cpath d='M7 12v8M10 10v12M22 10v12M25 12v8M10 16h12' stroke='%230b0f14' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<script>
+  // Apply the saved theme before first paint to avoid a flash.
+  try { var t = JSON.parse(localStorage.getItem("gymtrack:v1") || "{}"); if (t.settings && t.settings.theme === "light") document.documentElement.dataset.theme = "light"; } catch (e) {}
+</script>
+</head>
+<body>
+<a class="skip" href="#view">Skip to content</a>
+
+<nav class="nav" aria-label="Main">
+  <div class="brand"><svg class="i"><use href="#i-dumbbell"/></svg><span>Gym Tracker</span></div>
+  <a href="#/" data-nav="dashboard"><svg class="i"><use href="#i-home"/></svg><span>Dashboard</span></a>
+  <a href="#/workouts" data-nav="workouts"><svg class="i"><use href="#i-dumbbell"/></svg><span>Workouts</span></a>
+  <a href="#/records" data-nav="records"><svg class="i"><use href="#i-trophy"/></svg><span>Records</span></a>
+  <a href="#/history" data-nav="history"><svg class="i"><use href="#i-clock"/></svg><span>History</span></a>
+  <a href="#/library" data-nav="library"><svg class="i"><use href="#i-book"/></svg><span>Library</span></a>
+  <a href="#/profile" data-nav="profile"><svg class="i"><use href="#i-user"/></svg><span>Profile</span></a>
+  <a class="nav-ext" href="../">Weight Log ↗</a>
+</nav>
+
+<div class="shell">
+  <div id="saveWarn" class="banner warn" role="alert" hidden></div>
+  <div id="loadWarn" class="banner warn" role="alert" hidden></div>
+  <main id="view" tabindex="-1"></main>
+</div>
+
+<div id="restBar" class="restbar" hidden aria-live="polite">
+  <div class="restbar-fill" id="restFill"></div>
+  <div class="restbar-row">
+    <div class="restbar-text"><span class="muted small" id="restLabel">Rest</span><strong id="restTime" class="mono">0:00</strong></div>
+    <div class="restbar-btns">
+      <button type="button" class="btn sm ghost" data-action="rest-add">+15 s</button>
+      <button type="button" class="btn sm ghost" data-action="rest-pause" id="restPause">Pause</button>
+      <button type="button" class="btn sm ghost" data-action="rest-reset">Reset</button>
+      <button type="button" class="btn sm icon ghost" data-action="rest-close" aria-label="Close rest timer"><svg class="i"><use href="#i-x"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<dialog id="modal" class="modal"><form method="dialog" id="modalForm" novalidate></form></dialog>
+<dialog id="lightbox" class="lightbox">
+  <button type="button" class="btn icon ghost lb-close" data-action="lightbox-close" aria-label="Close image"><svg class="i"><use href="#i-x"/></svg></button>
+  <div id="lightboxBody"></div>
+</dialog>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M8 7h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-7 2 1 3 3 3 5 1-1 1-3 0-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-machine" viewBox="0 0 48 48"><path d="M10 40V8h6M10 14h22v26M16 20h10v12H16zM32 24h6M6 40h36" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -10,6 +10,10 @@ A small weight tracker that runs on GitHub Pages and saves to Supabase, so your 
 
 It's plain HTML and JavaScript with no build step: `index.html`, `app.js`, and `config.js`.
 
+## Gym Tracker
+
+This repo also includes a separate five-day gym workout tracker in [`gym/`](gym/). It has machine and free-weight options, set logging, personal records, rest timers and calorie estimates. It runs entirely in the browser with no setup and lives at `/gym/` on the same GitHub Pages site. See [`gym/README.md`](gym/README.md).
+
 ## Setup
 
 ### 1. Create a Supabase project
