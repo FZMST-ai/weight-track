@@ -32,6 +32,8 @@ On GitHub Pages the app is at `https://<your-username>.github.io/weight-track/gy
 
 [`dist/gym-tracker.html`](dist/gym-tracker.html) is the whole app in one self-contained HTML file (about 3.3 MB). Styles, scripts and all exercise photos are inlined, so you can download it, email it or save it to your phone and open it with no server or internet connection. Its data is stored in the browser that opens it, separately from the hosted version. Use Export/Import backup to move data between them.
 
+`python3 gym/build-single.py --artifact OUT.html` builds the same file without the document wrapper, for publishing as a claude.ai Artifact. When it runs there, `js/cloud.js` syncs your data to a private per-user store, so your workouts follow your account across devices, and exports use the viewer's save prompt. Everywhere else `cloud.js` does nothing.
+
 After changing the source, rebuild it with:
 
 ```sh
@@ -47,6 +49,7 @@ python3 gym/build-single.py
 | `js/data.js` | The built-in programme and exercise library (technique, muscles, image mapping) |
 | `js/store.js` | Data model, `localStorage` persistence, calculations (volume, 1RM, records, calories, totals), import/export |
 | `js/app.js` | Router, views and event handling |
+| `js/cloud.js` | Cloud sync when running as a claude.ai Artifact (inactive elsewhere) |
 | `img/<Exercise_Id>/0.jpg, 1.jpg` | Bundled exercise photos showing the start and end positions |
 | `tests/e2e.js` | Playwright acceptance test |
 | `build-single.py` | Builds `dist/gym-tracker.html` |

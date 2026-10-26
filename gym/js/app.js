@@ -761,6 +761,7 @@
         <p class="small">MET values: light 3.0, moderate 3.5 (default), vigorous 6.0. These are population averages for resistance training — real expenditure varies with fitness, effort, body composition and rest length. Treat every number as an estimate, not a measurement. Sets, reps and weights are not used for calories.</p>
       </section>
       <section class="card stack"><h2>Backup & data</h2>
+        ${window.GT_SYNC || window.claude ? `<p class="small" id="syncNote">${esc(window.GT_SYNC ? window.GT_SYNC.text : "Connecting to cloud storage…")}</p>` : ""}
         <p class="small muted">Saved data: ${(size / 1024).toFixed(1)} KB · ${plural(S().sessions.filter((s) => s.status === "completed").length, "completed workout")}${S().savedAt ? ` · last saved ${fmtDateTime(S().savedAt)}` : ""}</p>
         <div class="row">
           <button class="btn" data-action="export-json">Export backup (JSON)</button>
@@ -1107,18 +1108,24 @@
   A["lib-filter"] = (el) => { lib.eq = el.dataset.eq; $$("[data-action=lib-filter]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.eq === lib.eq)); $("#libList").innerHTML = libraryList(); };
 
   // Data management
-  function download(name, text, type) {
+  // Inside a claude.ai Artifact, plain downloads are blocked, so ask the viewer to save via the downloads capability.
+  async function download(name, text, type) {
+    const dl = window.claude && typeof window.claude.use === "function" ? await window.claude.use("downloads") : null;
+    if (dl) {
+      try { await dl.save({ filename: name, data: text }); return true; }
+      catch (e) { if (!e || e.code !== "declined") toast("This view can't save files. Try opening the page in a browser.", "err"); return false; }
+    }
     const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return true;
   }
-  A["export-json"] = () => { download(`gym-tracker-backup-${today()}.json`, GT.exportJSON(), "application/json"); toast("Backup downloaded."); };
-  A["export-csv"] = (el) => {
+  A["export-json"] = async () => { if (await download(`gym-tracker-backup-${today()}.json`, GT.exportJSON(), "application/json")) toast("Backup saved."); };
+  A["export-csv"] = async (el) => {
     const kind = el.dataset.kind;
-    download(`gym-tracker-${kind}-${today()}.csv`, kind === "sets" ? GT.setsCSV() : GT.historyCSV(), "text/csv");
-    toast("CSV downloaded.");
+    if (await download(`gym-tracker-${kind}-${today()}.csv`, kind === "sets" ? GT.setsCSV() : GT.historyCSV(), "text/csv")) toast("CSV saved.");
   };
   A["clear-all"] = async () => {
     const r = await openModal({

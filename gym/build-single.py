@@ -4,10 +4,11 @@
 Inlines styles.css, the three scripts and every photo (re-encoded smaller as
 base64 data URIs) so the result works offline from a single file.
 
-    python3 gym/build-single.py            # writes gym/dist/gym-tracker.html
+    python3 gym/build-single.py                       # writes gym/dist/gym-tracker.html
+    python3 gym/build-single.py --artifact OUT.html   # body-only page for publishing as a claude.ai Artifact
 Needs ImageMagick (`convert`) to shrink the photos; without it they're embedded as-is.
 """
-import base64, os, re, shutil, subprocess, tempfile
+import base64, os, re, shutil, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "dist", "gym-tracker.html")
@@ -46,7 +47,7 @@ def main():
     imgs = images()
     entries = ",\n".join(f'"{k}":"{v}"' for k, v in imgs.items())
     scripts = "<script>window.GT_IMAGES={\n" + entries + "\n};</script>\n"
-    for name in ("data.js", "store.js", "app.js"):
+    for name in ("data.js", "store.js", "app.js", "cloud.js"):
         tag = f'<script src="js/{name}"></script>'
         if tag not in html:
             raise SystemExit("index.html is missing " + tag)
@@ -54,10 +55,19 @@ def main():
     # In a standalone file there is no Weight Log next to it.
     html = re.sub(r'\s*<a class="nav-ext" href="\.\./">Weight Log ↗</a>', "", html)
     html = html.replace('<p class="small">Also in this project: <a href="../">Weight Log</a> for tracking body weight.</p>', "")
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w", encoding="utf-8") as f:
+    out = OUT
+    if len(sys.argv) > 2 and sys.argv[1] == "--artifact":
+        # The Artifact host wraps the page in its own doctype/head/body with charset and viewport metas.
+        out = sys.argv[2]
+        html = re.sub(r"<!doctype html>\s*<html[^>]*>\s*<head>\s*", "", html, flags=re.I)
+        html = re.sub(r'<meta charset="utf-8">\s*<meta name="viewport"[^>]*>\s*', "", html)
+        html = html.replace("<title>", '<meta name="claude:viewport-fit-sides" content="cover">\n<title>', 1)
+        html = re.sub(r"</head>\s*<body>\s*", "", html)
+        html = re.sub(r"</body>\s*</html>\s*$", "", html)
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"Wrote {OUT} ({os.path.getsize(OUT) / 1048576:.1f} MB, {len(imgs)} images)")
+    print(f"Wrote {out} ({os.path.getsize(out) / 1048576:.1f} MB, {len(imgs)} images)")
 
 
 if __name__ == "__main__":

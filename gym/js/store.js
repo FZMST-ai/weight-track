@@ -485,6 +485,12 @@
     recomputeRecords();
     return save();
   }
+  // Take over state from another copy (cloud sync) without the import backup step.
+  function adopt(raw) {
+    state = normalize(raw);
+    recomputeRecords();
+    return save();
+  }
   function clearAll() {
     state = defaults();
     try { localStorage.removeItem(KEY); localStorage.removeItem(KEY + ":before-import"); } catch (e) { /* ignore */ }
@@ -526,6 +532,6 @@
     startSession, session, activeSession, elapsedMs, togglePause, finishSession, updateCompletedMeta, discardSession,
     curSets, curEx, curTarget, doneSets, exStatus, exVolume, e1rm, sessionStats, aggregate,
     calories, liveCalories, totals, recomputeRecords, pendingRecords, sessionPRs, suggestion, lastPerformance, completedSorted,
-    unit, toDisplay, fromDisplay, exportJSON, validateImport, replaceAll, clearAll, historyCSV, setsCSV,
+    unit, toDisplay, fromDisplay, exportJSON, validateImport, replaceAll, adopt, clearAll, historyCSV, setsCSV,
   };
 })();

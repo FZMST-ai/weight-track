@@ -431,3 +431,4 @@ table.data th { color: var(--muted); font-size: 0.72rem; text-transform: upperca
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 .sets { max-width: 640px; }
+#syncNote[data-warn="1"] { color: var(--skip); }
