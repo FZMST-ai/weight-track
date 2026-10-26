@@ -28,6 +28,16 @@ You can also open `gym/index.html` straight from disk (`file://`). Everything wo
 
 On GitHub Pages the app is at `https://<your-username>.github.io/weight-track/gym/`. On iPhone, open it in Safari and choose **Share → Add to Home Screen** for a full-screen app.
 
+## Single-file version
+
+[`dist/gym-tracker.html`](dist/gym-tracker.html) is the whole app in one self-contained HTML file (about 3.3 MB). Styles, scripts and all exercise photos are inlined, so you can download it, email it or save it to your phone and open it with no server or internet connection. Its data is stored in the browser that opens it, separately from the hosted version. Use Export/Import backup to move data between them.
+
+After changing the source, rebuild it with:
+
+```sh
+python3 gym/build-single.py
+```
+
 ## Files
 
 | File | Purpose |
@@ -39,6 +49,7 @@ On GitHub Pages the app is at `https://<your-username>.github.io/weight-track/gy
 | `js/app.js` | Router, views and event handling |
 | `img/<Exercise_Id>/0.jpg, 1.jpg` | Bundled exercise photos showing the start and end positions |
 | `tests/e2e.js` | Playwright acceptance test |
+| `build-single.py` | Builds `dist/gym-tracker.html` |
 
 ## Backing up and restoring
 

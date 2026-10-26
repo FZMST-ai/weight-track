@@ -52,7 +52,9 @@
   // ---------- images
   function imageSources(ex) {
     if (ex.imageUrl) return [ex.imageUrl];
-    if (ex.image && ex.image.id) return [`img/${ex.image.id}/0.jpg`, `img/${ex.image.id}/1.jpg`];
+    // The single-file build embeds photos in window.GT_IMAGES; otherwise they load from img/.
+    const src = (f) => (window.GT_IMAGES && window.GT_IMAGES[f]) || "img/" + f;
+    if (ex.image && ex.image.id) return [src(`${ex.image.id}/0.jpg`), src(`${ex.image.id}/1.jpg`)];
     return [];
   }
   function thumb(ex, opts = {}) {
